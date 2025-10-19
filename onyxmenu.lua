@@ -527,8 +527,8 @@ function CreateGUI()
     GUI.Enabled = true
 
     MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 350, 0, 450) -- Większe dla nowych kategorii
-    MainFrame.Position = UDim2.new(0, 50, 0, 50)
+    MainFrame.Size = UDim2.new(0, 350, 0, 450)
+    MainFrame.Position = UDim2.new(1, -150, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
@@ -589,7 +589,7 @@ function CreateGUI()
     TabsContainer.Name = "TabsContainer"
     TabsContainer.Parent = MainFrame
 
-    -- Tab Buttons - 4 kategorie teraz
+    -- Tab Buttons
     local PlayerTab = CreateTabButton("PLAYER", UDim2.new(0, 0, 0, 0))
     local WeaponTab = CreateTabButton("WEAPON", UDim2.new(0.25, 0, 0, 0))
     local ESPTab = CreateTabButton("ESP", UDim2.new(0.5, 0, 0, 0))
@@ -672,12 +672,12 @@ end
 
 function CreateTabButton(text, position)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.24, 0, 1, 0) -- Mniejsze przyciski dla 4 kart
+    button.Size = UDim2.new(0.24, 0, 1, 0)
     button.Position = position
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 10 -- Mniejszy tekst
+    button.TextSize = 10
     button.Font = Enum.Font.Gotham
     button.Name = text
     
@@ -874,3 +874,107 @@ function CreateMiscContent(parent)
     Info.TextWrapped = true
     Info.Parent = frame
 end
+
+function CreateToggleButton(text, position, configKey)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 35)
+    button.Position = position
+    button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(60, 60, 60)
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 12
+    button.Font = Enum.Font.Gotham
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = button
+    
+    button.MouseButton1Click:Connect(function()
+        Config[configKey] = not Config[configKey]
+        button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(60, 60, 60)
+        
+        if configKey == "ESP" then
+            if Config.ESP then
+                CreateSimpleESP()
+            else
+                RemoveESP()
+            end
+        elseif configKey == "ShowNames" or configKey == "ShowDistance" then
+            UpdateAllESP()
+        elseif configKey == "AimbotEnabled" or configKey == "ShowFOV" then
+            UpdateFOVCircle()
+        elseif configKey == "RainbowWeapons" then
+            RainbowWeapons()
+        elseif configKey == "HitboxChanger" then
+            ApplyHitboxChanger()
+        end
+    end)
+    
+    return button
+end
+
+function SwitchToTab(tabName)
+    CurrentTab = tabName
+    
+    -- Hide all tabs
+    local contentArea = MainFrame:FindFirstChild("ContentArea")
+    if contentArea then
+        for _, tab in pairs(contentArea:GetChildren()) do
+            if tab:IsA("Frame") then
+                tab.Visible = (tab.Name == tabName .. "Tab")
+            end
+        end
+    end
+    
+    -- Update tab buttons
+    local tabsContainer = MainFrame:FindFirstChild("TabsContainer")
+    if tabsContainer then
+        for _, button in pairs(tabsContainer:GetChildren()) do
+            if button:IsA("TextButton") then
+                button.BackgroundColor3 = (button.Name == tabName) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
+            end
+        end
+    end
+end
+
+-- Main Loop
+RunService.Heartbeat:Connect(function()
+    RightClickAimbot()
+    Triggerbot()
+    WeaponHacks()
+    ApplyHitboxChanger() -- Ciągłe aktualizowanie hitboxów
+    
+    if Config.ESP then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
+                if not ESPHandles[player] then
+                    CreateESP(player)
+                end
+            end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if ESPHandles[player] then
+        if ESPHandles[player].Highlight then
+            ESPHandles[player].Highlight:Destroy()
+        end
+        if ESPHandles[player].Billboard then
+            ESPHandles[player].Billboard:Destroy()
+        end
+        if ESPHandles[player].Connection then
+            ESPHandles[player].Connection:Disconnect()
+        end
+        ESPHandles[player] = nil
+    end
+end)
+
+-- Initial setup - CREATE MENU IMMEDIATELY
+CreateGUI()
+UpdateFOVCircle()
+
+print("Arsenal Hack Menu v8 Loaded!")
+print("Added Hitbox Changer and Discord link!")
+print("Press K to hide/show the menu")
+print("Use QUIT button to disable all hacks")
