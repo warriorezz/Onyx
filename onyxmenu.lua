@@ -1,4 +1,4 @@
--- Arsenal Hack Menu - Hitbox Changer & Discord Link
+-- Arsenal Hack Menu - Fixed Hitbox Changer & Clipboard
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -103,7 +103,7 @@ function QuitHacks()
     print("All hacks disabled and menu closed!")
 end
 
--- Hitbox Changer Functions
+-- Hitbox Changer Functions - POPRAWIONE
 function ApplyHitboxChanger()
     if not Config.HitboxChanger then
         RestoreHitboxes()
@@ -114,13 +114,13 @@ function ApplyHitboxChanger()
         if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if humanoid and humanoid.Health > 0 then
-                -- Powiększ główne części ciała 4x
-                local parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "LeftFoot", "RightFoot", "LeftHand", "RightHand"}
+                -- Tylko główne części ciała które mają znaczenie dla trafień
+                local hitboxParts = {"Head", "UpperTorso", "LowerTorso", "HumanoidRootPart"}
                 
-                for _, partName in pairs(parts) do
+                for _, partName in pairs(hitboxParts) do
                     local part = player.Character:FindFirstChild(partName)
                     if part and part:IsA("BasePart") then
-                        -- Zapisz oryginalny rozmiar
+                        -- Zapisz oryginalny rozmiar tylko raz
                         if not OriginalHitboxes[part] then
                             OriginalHitboxes[part] = {
                                 Size = part.Size,
@@ -128,12 +128,14 @@ function ApplyHitboxChanger()
                             }
                         end
                         
-                        -- Powiększ 4x
-                        part.Size = OriginalHitboxes[part].Size * 4
-                        part.CanCollide = false -- Wyłącz kolizje żeby nie przeszkadzało w grze
-                        part.Transparency = 0.8 -- Półprzezroczyste żeby było widać
-                        part.Material = EnumMaterial.Neon
-                        part.Color = Color3.fromRGB(255, 0, 255) -- Magenta kolor
+                        -- Powiększ 4x tylko jeśli nie jest już powiększony
+                        if part.Size == OriginalHitboxes[part].Size then
+                            part.Size = part.Size * 4
+                            part.CanCollide = false
+                            part.Transparency = 0.7
+                            part.Material = EnumMaterial.Neon
+                            part.Color = Color3.fromRGB(255, 0, 255) -- Magenta kolor
+                        end
                     end
                 end
             end
@@ -152,6 +154,25 @@ function RestoreHitboxes()
         end
     end
     OriginalHitboxes = {}
+end
+
+-- Copy to clipboard function
+function CopyToClipboard(text)
+    local SetRBXClipboard = nil
+    if setrbxclipboard then
+        SetRBXClipboard = setrbxclipboard
+    elseif set_clipboard then
+        SetRBXClipboard = set_clipboard
+    end
+    
+    if SetRBXClipboard then
+        SetRBXClipboard(text)
+        print("Link copied to clipboard: " .. text)
+        return true
+    else
+        print("Clipboard not available. Please copy manually: " .. text)
+        return false
+    end
 end
 
 -- FOV Circle na środku celownika
@@ -347,7 +368,7 @@ function Triggerbot()
     end
 end
 
--- Enhanced ESP with Names and Distance
+-- Enhanced ESP with Names and Distance - POPRAWIONE (bez powiększania głowy)
 function CreateESP(player)
     if not player.Character then return end
     
@@ -365,7 +386,7 @@ function CreateESP(player)
         end
     end
 
-    -- Create Highlight
+    -- Create Highlight (NIE modyfikuje rozmiarów części!)
     local highlight = Instance.new("Highlight")
     highlight.Name = "ESP_Highlight"
     highlight.Adornee = character
@@ -373,6 +394,7 @@ function CreateESP(player)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.7
     highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = character
 
     -- Create Billboard for Name and Distance
@@ -496,7 +518,7 @@ function CreateGUI()
     GUI.Enabled = true
 
     MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 350, 0, 450) -- Większe dla nowych kategorii
+    MainFrame.Size = UDim2.new(0, 350, 0, 450)
     MainFrame.Position = UDim2.new(0, 50, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
@@ -558,7 +580,7 @@ function CreateGUI()
     TabsContainer.Name = "TabsContainer"
     TabsContainer.Parent = MainFrame
 
-    -- Tab Buttons - 4 kategorie teraz
+    -- Tab Buttons - 4 kategorie
     local PlayerTab = CreateTabButton("PLAYER", UDim2.new(0, 0, 0, 0))
     local WeaponTab = CreateTabButton("WEAPON", UDim2.new(0.25, 0, 0, 0))
     local ESPTab = CreateTabButton("ESP", UDim2.new(0.5, 0, 0, 0))
@@ -641,12 +663,12 @@ end
 
 function CreateTabButton(text, position)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.24, 0, 1, 0) -- Mniejsze przyciski dla 4 kart
+    button.Size = UDim2.new(0.24, 0, 1, 0)
     button.Position = position
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 10 -- Mniejszy tekst
+    button.TextSize = 10
     button.Font = Enum.Font.Gotham
     button.Name = text
     
@@ -721,7 +743,7 @@ function CreatePlayerContent(parent)
     Info.Size = UDim2.new(1, 0, 0, 80)
     Info.Position = UDim2.new(0, 0, 0, 185)
     Info.BackgroundTransparency = 1
-    Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Hitbox: 4x larger hitboxes\n• Green = Locked on target"
+    Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Hitbox: 4x larger hitboxes\n• Makes enemies easier to hit"
     Info.TextColor3 = Color3.fromRGB(180, 180, 100)
     Info.TextSize = 10
     Info.TextWrapped = true
@@ -815,20 +837,17 @@ function CreateMiscContent(parent)
     discordCorner.Parent = discordButton
 
     discordButton.MouseButton1Click:Connect(function()
-        -- Otwórz link do Discord w przeglądarce
-        local httpService = game:GetService("HttpService")
-        local success, result = pcall(function()
-            return httpService:GetAsync("https://discord.gg/MWqRMDZnnF")
-        end)
-        
-        if success then
-            print("Opening Discord link...")
-            -- W Roblox nie można bezpośrednio otwierać linków, więc pokazujemy link w konsoli
-            print("Discord Link: https://discord.gg/MWqRMDZnnF")
-            print("Copy this link and open it in your browser!")
-        else
-            print("Discord Link: https://discord.gg/MWqRMDZnnF")
-            print("Copy this link and open it in your browser to join the Onyx Discord!")
+        local discordLink = "https://discord.gg/MWqRMDZnnF"
+        if CopyToClipboard(discordLink) then
+            -- Pokaz potwierdzenie
+            local originalText = discordButton.Text
+            discordButton.Text = "LINK COPIED!\nPaste in browser"
+            discordButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            
+            wait(2)
+            
+            discordButton.Text = originalText
+            discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
         end
     end)
 
@@ -859,90 +878,4 @@ function CreateToggleButton(text, position, configKey)
     
     button.MouseButton1Click:Connect(function()
         Config[configKey] = not Config[configKey]
-        button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(60, 60, 60)
-        
-        if configKey == "ESP" then
-            if Config.ESP then
-                CreateSimpleESP()
-            else
-                RemoveESP()
-            end
-        elseif configKey == "ShowNames" or configKey == "ShowDistance" then
-            UpdateAllESP()
-        elseif configKey == "AimbotEnabled" or configKey == "ShowFOV" then
-            UpdateFOVCircle()
-        elseif configKey == "RainbowWeapons" then
-            RainbowWeapons()
-        elseif configKey == "HitboxChanger" then
-            ApplyHitboxChanger()
-        end
-    end)
-    
-    return button
-end
-
-function SwitchToTab(tabName)
-    CurrentTab = tabName
-    
-    -- Hide all tabs
-    local contentArea = MainFrame:FindFirstChild("ContentArea")
-    if contentArea then
-        for _, tab in pairs(contentArea:GetChildren()) do
-            if tab:IsA("Frame") then
-                tab.Visible = (tab.Name == tabName .. "Tab")
-            end
-        end
-    end
-    
-    -- Update tab buttons
-    local tabsContainer = MainFrame:FindFirstChild("TabsContainer")
-    if tabsContainer then
-        for _, button in pairs(tabsContainer:GetChildren()) do
-            if button:IsA("TextButton") then
-                button.BackgroundColor3 = (button.Name == tabName) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
-            end
-        end
-    end
-end
-
--- Main Loop
-RunService.Heartbeat:Connect(function()
-    RightClickAimbot()
-    Triggerbot()
-    WeaponHacks()
-    ApplyHitboxChanger() -- Ciągłe aktualizowanie hitboxów
-    
-    if Config.ESP then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
-                if not ESPHandles[player] then
-                    CreateESP(player)
-                end
-            end
-        end
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    if ESPHandles[player] then
-        if ESPHandles[player].Highlight then
-            ESPHandles[player].Highlight:Destroy()
-        end
-        if ESPHandles[player].Billboard then
-            ESPHandles[player].Billboard:Destroy()
-        end
-        if ESPHandles[player].Connection then
-            ESPHandles[player].Connection:Disconnect()
-        end
-        ESPHandles[player] = nil
-    end
-end)
-
--- Initial setup - CREATE MENU IMMEDIATELY
-CreateGUI()
-UpdateFOVCircle()
-
-print("Arsenal Hack Menu v8 Loaded!")
-print("Added Hitbox Changer and Discord link!")
-print("Press K to hide/show the menu")
-print("Use QUIT button to disable all hacks")
+        button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(60, 60, 
