@@ -1,4 +1,4 @@
--- Arsenal Hack Menu - Toggle with K Key
+-- Arsenal Hack Menu - Fixed Version
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -20,8 +20,10 @@ local AimbotTarget = nil
 local RightMouseDown = false
 local FOVCircle = nil
 local RainbowConnection = nil
-local MenuVisible = false
+local MenuVisible = true
 local GUI = nil
+local MainFrame = nil
+local CurrentTab = "Player"
 
 -- Śledzenie prawego przycisku myszy
 UserInputService.InputBegan:Connect(function(input)
@@ -46,17 +48,15 @@ end)
 function ToggleMenu()
     if not GUI then
         CreateGUI()
+        return
     end
     
     MenuVisible = not MenuVisible
     GUI.Enabled = MenuVisible
     
     if MenuVisible then
-        -- Pokaz menu z animacją
-        MainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
-        UserInputService.MouseIconEnabled = false
+        UserInputService.MouseIconEnabled = true
     else
-        -- Schowaj menu
         UserInputService.MouseIconEnabled = true
     end
 end
@@ -282,18 +282,16 @@ function RemoveESP()
 end
 
 -- GUI Creation
-local MainFrame = nil
-
 function CreateGUI()
     GUI = Instance.new("ScreenGui")
     GUI.Name = "MainHackGUI"
     GUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
     GUI.ResetOnSpawn = false
-    GUI.Enabled = false
+    GUI.Enabled = true
 
     MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 300, 0, 350)
-    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175) -- Na środku ekranu
+    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
@@ -315,9 +313,9 @@ function CreateGUI()
     TitleCorner.CornerRadius = UDim.new(0, 8)
     TitleCorner.Parent = TitleBar
 
-    -- Title Text - teraz na pewno nie nachodzi
+    -- Title Text
     local TitleText = Instance.new("TextLabel")
-    TitleText.Size = UDim2.new(0.7, 0, 1, 0)
+    TitleText.Size = UDim2.new(0.6, 0, 1, 0)
     TitleText.Position = UDim2.new(0, 10, 0, 0)
     TitleText.BackgroundTransparency = 1
     TitleText.Text = "ARSENAL HACK MENU"
@@ -327,14 +325,14 @@ function CreateGUI()
     TitleText.Font = Enum.Font.GothamBold
     TitleText.Parent = TitleBar
 
-    -- Close Button - teraz na pewno nie nachodzi
+    -- Close Button
     local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 80, 0, 25)
-    CloseButton.Position = UDim2.new(1, -90, 0, 5)
+    CloseButton.Size = UDim2.new(0, 70, 0, 25)
+    CloseButton.Position = UDim2.new(1, -75, 0, 5)
     CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     CloseButton.Text = "CLOSE (K)"
     CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 12
+    CloseButton.TextSize = 11
     CloseButton.Font = Enum.Font.Gotham
     CloseButton.Parent = TitleBar
 
@@ -346,35 +344,38 @@ function CreateGUI()
         ToggleMenu()
     end)
 
-    -- Tabs
-    local TabsFrame = Instance.new("Frame")
-    TabsFrame.Size = UDim2.new(1, -20, 0, 30)
-    TabsFrame.Position = UDim2.new(0, 10, 0, 45)
-    TabsFrame.BackgroundTransparency = 1
-    TabsFrame.Parent = MainFrame
+    -- Tabs Container
+    local TabsContainer = Instance.new("Frame")
+    TabsContainer.Size = UDim2.new(1, -20, 0, 30)
+    TabsContainer.Position = UDim2.new(0, 10, 0, 45)
+    TabsContainer.BackgroundTransparency = 1
+    TabsContainer.Name = "TabsContainer"
+    TabsContainer.Parent = MainFrame
 
+    -- Tab Buttons
     local PlayerTab = CreateTabButton("PLAYER", UDim2.new(0, 0, 0, 0))
     local WeaponTab = CreateTabButton("WEAPON", UDim2.new(0.33, 0, 0, 0))
     local ESPTab = CreateTabButton("ESP", UDim2.new(0.66, 0, 0, 0))
 
-    PlayerTab.Parent = TabsFrame
-    WeaponTab.Parent = TabsFrame
-    ESPTab.Parent = TabsFrame
+    PlayerTab.Parent = TabsContainer
+    WeaponTab.Parent = TabsContainer
+    ESPTab.Parent = TabsContainer
 
     -- Content Area
     local ContentArea = Instance.new("Frame")
     ContentArea.Size = UDim2.new(1, -20, 1, -90)
     ContentArea.Position = UDim2.new(0, 10, 0, 85)
     ContentArea.BackgroundTransparency = 1
+    ContentArea.Name = "ContentArea"
     ContentArea.Parent = MainFrame
 
     -- Create tab contents
-    CreatePlayerTab(ContentArea)
-    CreateWeaponTab(ContentArea)
-    CreateESPTab(ContentArea)
+    CreatePlayerContent(ContentArea)
+    CreateWeaponContent(ContentArea)
+    CreateESPContent(ContentArea)
 
     -- Start with Player tab
-    SwitchToTab("Player")
+    SwitchToTab("PLAYER")
 end
 
 function CreateTabButton(text, position)
@@ -384,31 +385,37 @@ function CreateTabButton(text, position)
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 12
+    button.TextSize = 11
     button.Font = Enum.Font.Gotham
+    button.Name = text
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 4)
     corner.Parent = button
     
     button.MouseButton1Click:Connect(function()
-        SwitchToTab(text:upper())
+        SwitchToTab(text)
     end)
     
     return button
 end
 
-function CreatePlayerTab(parent)
+function CreatePlayerContent(parent)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.Position = UDim2.new(0, 0, 0, 0)
     frame.BackgroundTransparency = 1
-    frame.Name = "PlayerTab"
+    frame.Name = "PLAYERTab"
     frame.Visible = false
     frame.Parent = parent
 
-    CreateToggle(frame, "AIMBOT PRO", UDim2.new(0, 0, 0, 0), "AimbotEnabled")
-    CreateToggle(frame, "SHOW FOV CIRCLE", UDim2.new(0, 0, 0, 40), "ShowFOV")
+    -- Aimbot Toggle
+    local aimbotButton = CreateToggleButton("AIMBOT PRO", UDim2.new(0, 0, 0, 0), "AimbotEnabled")
+    aimbotButton.Parent = frame
+
+    -- FOV Toggle
+    local fovButton = CreateToggleButton("SHOW FOV CIRCLE", UDim2.new(0, 0, 0, 40), "ShowFOV")
+    fovButton.Parent = frame
 
     -- FOV Slider
     local FOVText = Instance.new("TextLabel")
@@ -456,18 +463,23 @@ function CreatePlayerTab(parent)
     Info.Parent = frame
 end
 
-function CreateWeaponTab(parent)
+function CreateWeaponContent(parent)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.Position = UDim2.new(0, 0, 0, 0)
     frame.BackgroundTransparency = 1
-    frame.Name = "WeaponTab"
+    frame.Name = "WEAPONTab"
     frame.Visible = false
     frame.Parent = parent
 
-    CreateToggle(frame, "INFINITE AMMO", UDim2.new(0, 0, 0, 0), "InfiniteAmmo")
-    CreateToggle(frame, "NO RECOIL", UDim2.new(0, 0, 0, 40), "NoRecoil")
-    CreateToggle(frame, "RAINBOW WEAPONS", UDim2.new(0, 0, 0, 80), "RainbowWeapons")
+    local ammoButton = CreateToggleButton("INFINITE AMMO", UDim2.new(0, 0, 0, 0), "InfiniteAmmo")
+    ammoButton.Parent = frame
+
+    local recoilButton = CreateToggleButton("NO RECOIL", UDim2.new(0, 0, 0, 40), "NoRecoil")
+    recoilButton.Parent = frame
+
+    local rainbowButton = CreateToggleButton("RAINBOW WEAPONS", UDim2.new(0, 0, 0, 80), "RainbowWeapons")
+    rainbowButton.Parent = frame
 
     local Info = Instance.new("TextLabel")
     Info.Size = UDim2.new(1, 0, 0, 100)
@@ -480,7 +492,7 @@ function CreateWeaponTab(parent)
     Info.Parent = frame
 end
 
-function CreateESPTab(parent)
+function CreateESPContent(parent)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.Position = UDim2.new(0, 0, 0, 0)
@@ -489,7 +501,8 @@ function CreateESPTab(parent)
     frame.Visible = false
     frame.Parent = parent
 
-    CreateToggle(frame, "ENABLE ESP", UDim2.new(0, 0, 0, 0), "ESP")
+    local espButton = CreateToggleButton("ENABLE ESP", UDim2.new(0, 0, 0, 0), "ESP")
+    espButton.Parent = frame
 
     local Info = Instance.new("TextLabel")
     Info.Size = UDim2.new(1, 0, 0, 120)
@@ -502,7 +515,7 @@ function CreateESPTab(parent)
     Info.Parent = frame
 end
 
-function CreateToggle(parent, text, position, configKey)
+function CreateToggleButton(text, position, configKey)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 0, 35)
     button.Position = position
@@ -511,7 +524,6 @@ function CreateToggle(parent, text, position, configKey)
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.TextSize = 12
     button.Font = Enum.Font.Gotham
-    button.Parent = parent
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
@@ -538,46 +550,28 @@ function CreateToggle(parent, text, position, configKey)
 end
 
 function SwitchToTab(tabName)
-    local contentArea = MainFrame:FindFirstChild("ContentArea")
-    if not contentArea then return end
+    CurrentTab = tabName
     
-    for _, tab in pairs(contentArea:GetChildren()) do
-        tab.Visible = (tab.Name == tabName .. "Tab")
+    -- Hide all tabs
+    local contentArea = MainFrame:FindFirstChild("ContentArea")
+    if contentArea then
+        for _, tab in pairs(contentArea:GetChildren()) do
+            if tab:IsA("Frame") then
+                tab.Visible = (tab.Name == tabName .. "Tab")
+            end
+        end
     end
     
     -- Update tab buttons
-    local tabsFrame = MainFrame:FindFirstChild("TabsFrame")
-    if tabsFrame then
-        for _, button in pairs(tabsFrame:GetChildren()) do
+    local tabsContainer = MainFrame:FindFirstChild("TabsContainer")
+    if tabsContainer then
+        for _, button in pairs(tabsContainer:GetChildren()) do
             if button:IsA("TextButton") then
-                button.BackgroundColor3 = (button.Text == tabName) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
+                button.BackgroundColor3 = (button.Name == tabName) and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(50, 50, 50)
             end
         end
     end
 end
-
--- Mouse behavior
-local function onMouseMoved()
-    if MenuVisible and GUI then
-        local mouse = UserInputService:GetMouseLocation()
-        local framePos = MainFrame.AbsolutePosition
-        local frameSize = MainFrame.AbsoluteSize
-        
-        -- Jeśli mysz jest poza menu, przywróć kursor gry
-        if mouse.X < framePos.X or mouse.X > framePos.X + frameSize.X or
-           mouse.Y < framePos.Y or mouse.Y > framePos.Y + frameSize.Y then
-            UserInputService.MouseIconEnabled = true
-        else
-            UserInputService.MouseIconEnabled = false
-        end
-    end
-end
-
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        onMouseMoved()
-    end
-end)
 
 -- Main Loop
 RunService.Heartbeat:Connect(function()
@@ -603,11 +597,10 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Initial setup
-spawn(function()
-    wait(1)
-    UpdateFOVCircle()
-end)
+-- Initial setup - CREATE MENU IMMEDIATELY
+CreateGUI()
+UpdateFOVCircle()
 
-print("Arsenal Hack Menu v4 Loaded!")
-print("Press K to open/close the menu")
+print("Arsenal Hack Menu v5 Loaded!")
+print("Menu is now visible!")
+print("Press K to hide/show the menu")
