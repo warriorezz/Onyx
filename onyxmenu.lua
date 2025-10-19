@@ -1,9 +1,10 @@
--- Arsenal Hack Menu - Fixed Hitbox Changer & Clipboard
+-- Arsenal Hack Menu - Hitbox Changer & Discord Link
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
 local Config = {
     ESP = false,
@@ -114,28 +115,41 @@ function ApplyHitboxChanger()
         if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if humanoid and humanoid.Health > 0 then
-                -- Tylko główne części ciała które mają znaczenie dla trafień
-                local hitboxParts = {"Head", "UpperTorso", "LowerTorso", "HumanoidRootPart"}
+                -- TYLKO głowa powiększona 2x (nie 4x), reszta normalnie
+                local head = player.Character:FindFirstChild("Head")
+                if head and head:IsA("BasePart") then
+                    -- Zapisz oryginalny rozmiar
+                    if not OriginalHitboxes[head] then
+                        OriginalHitboxes[head] = {
+                            Size = head.Size,
+                            CanCollide = head.CanCollide
+                        }
+                    end
+                    
+                    -- Powiększ tylko głowę 2x (bardziej realistyczne)
+                    head.Size = OriginalHitboxes[head].Size * 2
+                    head.CanCollide = false
+                    head.Transparency = 0.6 -- Mniej przezroczyste
+                    head.Material = EnumMaterial.Neon
+                    head.Color = Color3.fromRGB(255, 0, 0) -- Czerwony kolor dla głowy
+                end
                 
-                for _, partName in pairs(hitboxParts) do
+                -- Reszta części normalnie
+                local otherParts = {"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
+                for _, partName in pairs(otherParts) do
                     local part = player.Character:FindFirstChild(partName)
                     if part and part:IsA("BasePart") then
-                        -- Zapisz oryginalny rozmiar tylko raz
                         if not OriginalHitboxes[part] then
                             OriginalHitboxes[part] = {
                                 Size = part.Size,
                                 CanCollide = part.CanCollide
                             }
                         end
-                        
-                        -- Powiększ 4x tylko jeśli nie jest już powiększony
-                        if part.Size == OriginalHitboxes[part].Size then
-                            part.Size = part.Size * 4
-                            part.CanCollide = false
-                            part.Transparency = 0.7
-                            part.Material = EnumMaterial.Neon
-                            part.Color = Color3.fromRGB(255, 0, 255) -- Magenta kolor
-                        end
+                        -- Przywróć oryginalny rozmiar dla reszty części
+                        part.Size = OriginalHitboxes[part].Size
+                        part.CanCollide = OriginalHitboxes[part].CanCollide
+                        part.Transparency = 0
+                        part.Material = EnumMaterial.Plastic
                     end
                 end
             end
@@ -150,29 +164,12 @@ function RestoreHitboxes()
             part.CanCollide = originalData.CanCollide
             part.Transparency = 0
             part.Material = EnumMaterial.Plastic
-            part.Color = Color3.fromRGB(255, 255, 255)
+            if part.Name == "Head" then
+                part.Color = Color3.fromRGB(255, 255, 255)
+            end
         end
     end
     OriginalHitboxes = {}
-end
-
--- Copy to clipboard function
-function CopyToClipboard(text)
-    local SetRBXClipboard = nil
-    if setrbxclipboard then
-        SetRBXClipboard = setrbxclipboard
-    elseif set_clipboard then
-        SetRBXClipboard = set_clipboard
-    end
-    
-    if SetRBXClipboard then
-        SetRBXClipboard(text)
-        print("Link copied to clipboard: " .. text)
-        return true
-    else
-        print("Clipboard not available. Please copy manually: " .. text)
-        return false
-    end
 end
 
 -- FOV Circle na środku celownika
@@ -368,7 +365,7 @@ function Triggerbot()
     end
 end
 
--- Enhanced ESP with Names and Distance - POPRAWIONE (bez powiększania głowy)
+-- Enhanced ESP with Names and Distance
 function CreateESP(player)
     if not player.Character then return end
     
@@ -386,7 +383,7 @@ function CreateESP(player)
         end
     end
 
-    -- Create Highlight (NIE modyfikuje rozmiarów części!)
+    -- Create Highlight
     local highlight = Instance.new("Highlight")
     highlight.Name = "ESP_Highlight"
     highlight.Adornee = character
@@ -394,7 +391,6 @@ function CreateESP(player)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.7
     highlight.OutlineTransparency = 0
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = character
 
     -- Create Billboard for Name and Distance
@@ -509,6 +505,19 @@ function RemoveESP()
     ESPHandles = {}
 end
 
+-- Funkcja kopiowania do schowka
+function CopyToClipboard(text)
+    local clipboard = setclipboard or toclipboard or set_clipboard
+    if clipboard then
+        clipboard(text)
+        return true
+    else
+        -- Fallback - zapisz do pliku jeśli nie ma funkcji clipboard
+        writefile("discord_link.txt", text)
+        return false
+    end
+end
+
 -- GUI Creation
 function CreateGUI()
     GUI = Instance.new("ScreenGui")
@@ -518,7 +527,7 @@ function CreateGUI()
     GUI.Enabled = true
 
     MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 350, 0, 450)
+    MainFrame.Size = UDim2.new(0, 350, 0, 450) -- Większe dla nowych kategorii
     MainFrame.Position = UDim2.new(0, 50, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
@@ -580,7 +589,7 @@ function CreateGUI()
     TabsContainer.Name = "TabsContainer"
     TabsContainer.Parent = MainFrame
 
-    -- Tab Buttons - 4 kategorie
+    -- Tab Buttons - 4 kategorie teraz
     local PlayerTab = CreateTabButton("PLAYER", UDim2.new(0, 0, 0, 0))
     local WeaponTab = CreateTabButton("WEAPON", UDim2.new(0.25, 0, 0, 0))
     local ESPTab = CreateTabButton("ESP", UDim2.new(0.5, 0, 0, 0))
@@ -663,12 +672,12 @@ end
 
 function CreateTabButton(text, position)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.24, 0, 1, 0)
+    button.Size = UDim2.new(0.24, 0, 1, 0) -- Mniejsze przyciski dla 4 kart
     button.Position = position
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 10
+    button.TextSize = 10 -- Mniejszy tekst
     button.Font = Enum.Font.Gotham
     button.Name = text
     
@@ -743,7 +752,7 @@ function CreatePlayerContent(parent)
     Info.Size = UDim2.new(1, 0, 0, 80)
     Info.Position = UDim2.new(0, 0, 0, 185)
     Info.BackgroundTransparency = 1
-    Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Hitbox: 4x larger hitboxes\n• Makes enemies easier to hit"
+    Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Hitbox: Only head 2x larger\n• Green = Locked on target"
     Info.TextColor3 = Color3.fromRGB(180, 180, 100)
     Info.TextSize = 10
     Info.TextWrapped = true
@@ -820,12 +829,12 @@ function CreateMiscContent(parent)
     frame.Visible = false
     frame.Parent = parent
 
-    -- Discord Button
+    -- Discord Button - POPRAWIONE
     local discordButton = Instance.new("TextButton")
     discordButton.Size = UDim2.new(1, 0, 0, 80)
     discordButton.Position = UDim2.new(0, 0, 0, 0)
     discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Discord color
-    discordButton.Text = "Join Discord Server\n\nJoin the Onyx Discord server"
+    discordButton.Text = "COPY DISCORD LINK\n\nClick to copy discord.gg/MWqRMDZnnF"
     discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     discordButton.TextSize = 12
     discordButton.TextWrapped = true
@@ -838,15 +847,19 @@ function CreateMiscContent(parent)
 
     discordButton.MouseButton1Click:Connect(function()
         local discordLink = "https://discord.gg/MWqRMDZnnF"
-        if CopyToClipboard(discordLink) then
-            -- Pokaz potwierdzenie
-            local originalText = discordButton.Text
-            discordButton.Text = "LINK COPIED!\nPaste in browser"
-            discordButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            
+        local success = CopyToClipboard(discordLink)
+        
+        if success then
+            discordButton.Text = "LINK COPIED!\n\nPaste in browser"
+            discordButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
             wait(2)
-            
-            discordButton.Text = originalText
+            discordButton.Text = "COPY DISCORD LINK\n\nClick to copy discord.gg/MWqRMDZnnF"
+            discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        else
+            discordButton.Text = "LINK SAVED TO FILE\n\nCheck discord_link.txt"
+            discordButton.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+            wait(2)
+            discordButton.Text = "COPY DISCORD LINK\n\nClick to copy discord.gg/MWqRMDZnnF"
             discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
         end
     end)
@@ -855,27 +868,9 @@ function CreateMiscContent(parent)
     Info.Size = UDim2.new(1, 0, 0, 120)
     Info.Position = UDim2.new(0, 0, 0, 90)
     Info.BackgroundTransparency = 1
-    Info.Text = "• Join our Discord community!\n• Get support and updates\n• Share your experience\n• Report bugs and issues\n• Connect with other users"
+    Info.Text = "• Click to copy Discord link\n• Paste in browser to join\n• Get support and updates\n• Share your experience\n• Connect with other users"
     Info.TextColor3 = Color3.fromRGB(180, 180, 100)
     Info.TextSize = 10
     Info.TextWrapped = true
     Info.Parent = frame
 end
-
-function CreateToggleButton(text, position, configKey)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 35)
-    button.Position = position
-    button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(60, 60, 60)
-    button.Text = text
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 12
-    button.Font = Enum.Font.Gotham
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = button
-    
-    button.MouseButton1Click:Connect(function()
-        Config[configKey] = not Config[configKey]
-        button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(60, 60, 
