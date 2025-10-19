@@ -1,4 +1,4 @@
--- Arsenal Hack Menu - ESP with Names and Distance
+-- Arsenal Hack Menu - Hitbox Changer & Discord Link
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -14,7 +14,8 @@ local Config = {
     ShowFOV = true,
     InfiniteAmmo = false,
     NoRecoil = false,
-    RainbowWeapons = false
+    RainbowWeapons = false,
+    HitboxChanger = false
 }
 
 local ESPHandles = {}
@@ -26,6 +27,7 @@ local MenuVisible = true
 local GUI = nil
 local MainFrame = nil
 local CurrentTab = "Player"
+local OriginalHitboxes = {}
 
 -- Variables for dragging
 local dragging = false
@@ -84,6 +86,9 @@ function QuitHacks()
         RainbowConnection = nil
     end
     
+    -- Restore original hitboxes
+    RestoreHitboxes()
+    
     -- Reset all config
     Config.ESP = false
     Config.ShowNames = true
@@ -93,8 +98,60 @@ function QuitHacks()
     Config.InfiniteAmmo = false
     Config.NoRecoil = false
     Config.RainbowWeapons = false
+    Config.HitboxChanger = false
     
     print("All hacks disabled and menu closed!")
+end
+
+-- Hitbox Changer Functions
+function ApplyHitboxChanger()
+    if not Config.HitboxChanger then
+        RestoreHitboxes()
+        return
+    end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                -- Powiększ główne części ciała 4x
+                local parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "LeftFoot", "RightFoot", "LeftHand", "RightHand"}
+                
+                for _, partName in pairs(parts) do
+                    local part = player.Character:FindFirstChild(partName)
+                    if part and part:IsA("BasePart") then
+                        -- Zapisz oryginalny rozmiar
+                        if not OriginalHitboxes[part] then
+                            OriginalHitboxes[part] = {
+                                Size = part.Size,
+                                CanCollide = part.CanCollide
+                            }
+                        end
+                        
+                        -- Powiększ 4x
+                        part.Size = OriginalHitboxes[part].Size * 4
+                        part.CanCollide = false -- Wyłącz kolizje żeby nie przeszkadzało w grze
+                        part.Transparency = 0.8 -- Półprzezroczyste żeby było widać
+                        part.Material = EnumMaterial.Neon
+                        part.Color = Color3.fromRGB(255, 0, 255) -- Magenta kolor
+                    end
+                end
+            end
+        end
+    end
+end
+
+function RestoreHitboxes()
+    for part, originalData in pairs(OriginalHitboxes) do
+        if part and part.Parent then
+            part.Size = originalData.Size
+            part.CanCollide = originalData.CanCollide
+            part.Transparency = 0
+            part.Material = EnumMaterial.Plastic
+            part.Color = Color3.fromRGB(255, 255, 255)
+        end
+    end
+    OriginalHitboxes = {}
 end
 
 -- FOV Circle na środku celownika
@@ -439,7 +496,7 @@ function CreateGUI()
     GUI.Enabled = true
 
     MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 320, 0, 420) -- Większe dla nowych opcji ESP
+    MainFrame.Size = UDim2.new(0, 350, 0, 450) -- Większe dla nowych kategorii
     MainFrame.Position = UDim2.new(0, 50, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
@@ -467,7 +524,7 @@ function CreateGUI()
     TitleText.Size = UDim2.new(0.5, 0, 1, 0)
     TitleText.Position = UDim2.new(0, 10, 0, 0)
     TitleText.BackgroundTransparency = 1
-    TitleText.Text = "Onyx cheat menu"
+    TitleText.Text = "ARSENAL HACK MENU"
     TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
     TitleText.TextSize = 14
     TitleText.TextXAlignment = Enum.TextXAlignment.Left
@@ -501,14 +558,16 @@ function CreateGUI()
     TabsContainer.Name = "TabsContainer"
     TabsContainer.Parent = MainFrame
 
-    -- Tab Buttons
+    -- Tab Buttons - 4 kategorie teraz
     local PlayerTab = CreateTabButton("PLAYER", UDim2.new(0, 0, 0, 0))
-    local WeaponTab = CreateTabButton("WEAPON", UDim2.new(0.33, 0, 0, 0))
-    local ESPTab = CreateTabButton("ESP", UDim2.new(0.66, 0, 0, 0))
+    local WeaponTab = CreateTabButton("WEAPON", UDim2.new(0.25, 0, 0, 0))
+    local ESPTab = CreateTabButton("ESP", UDim2.new(0.5, 0, 0, 0))
+    local MiscTab = CreateTabButton("MISC", UDim2.new(0.75, 0, 0, 0))
 
     PlayerTab.Parent = TabsContainer
     WeaponTab.Parent = TabsContainer
     ESPTab.Parent = TabsContainer
+    MiscTab.Parent = TabsContainer
 
     -- Content Area
     local ContentArea = Instance.new("Frame")
@@ -522,6 +581,7 @@ function CreateGUI()
     CreatePlayerContent(ContentArea)
     CreateWeaponContent(ContentArea)
     CreateESPContent(ContentArea)
+    CreateMiscContent(ContentArea)
 
     -- Quit Button at bottom
     local QuitButton = Instance.new("TextButton")
@@ -581,12 +641,12 @@ end
 
 function CreateTabButton(text, position)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.32, 0, 1, 0)
+    button.Size = UDim2.new(0.24, 0, 1, 0) -- Mniejsze przyciski dla 4 kart
     button.Position = position
     button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 11
+    button.TextSize = 10 -- Mniejszy tekst
     button.Font = Enum.Font.Gotham
     button.Name = text
     
@@ -618,10 +678,14 @@ function CreatePlayerContent(parent)
     local fovButton = CreateToggleButton("SHOW FOV CIRCLE", UDim2.new(0, 0, 0, 40), "ShowFOV")
     fovButton.Parent = frame
 
+    -- Hitbox Changer Toggle
+    local hitboxButton = CreateToggleButton("HITBOX CHANGER", UDim2.new(0, 0, 0, 80), "HitboxChanger")
+    hitboxButton.Parent = frame
+
     -- FOV Slider
     local FOVText = Instance.new("TextLabel")
     FOVText.Size = UDim2.new(1, 0, 0, 25)
-    FOVText.Position = UDim2.new(0, 0, 0, 80)
+    FOVText.Position = UDim2.new(0, 0, 0, 120)
     FOVText.BackgroundTransparency = 1
     FOVText.Text = "FOV: " .. Config.FOV
     FOVText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -630,7 +694,7 @@ function CreatePlayerContent(parent)
 
     local FOVSlider = Instance.new("TextButton")
     FOVSlider.Size = UDim2.new(1, 0, 0, 30)
-    FOVSlider.Position = UDim2.new(0, 0, 0, 105)
+    FOVSlider.Position = UDim2.new(0, 0, 0, 145)
     FOVSlider.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     FOVSlider.Text = "CHANGE FOV (50/100/150)"
     FOVSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -654,10 +718,10 @@ function CreatePlayerContent(parent)
     end)
 
     local Info = Instance.new("TextLabel")
-    Info.Size = UDim2.new(1, 0, 0, 60)
-    Info.Position = UDim2.new(0, 0, 0, 145)
+    Info.Size = UDim2.new(1, 0, 0, 80)
+    Info.Position = UDim2.new(0, 0, 0, 185)
     Info.BackgroundTransparency = 1
-    Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Green = Locked on target"
+    Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Hitbox: 4x larger hitboxes\n• Green = Locked on target"
     Info.TextColor3 = Color3.fromRGB(180, 180, 100)
     Info.TextSize = 10
     Info.TextWrapped = true
@@ -725,6 +789,60 @@ function CreateESPContent(parent)
     Info.Parent = frame
 end
 
+function CreateMiscContent(parent)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.Position = UDim2.new(0, 0, 0, 0)
+    frame.BackgroundTransparency = 1
+    frame.Name = "MISCTab"
+    frame.Visible = false
+    frame.Parent = parent
+
+    -- Discord Button
+    local discordButton = Instance.new("TextButton")
+    discordButton.Size = UDim2.new(1, 0, 0, 80)
+    discordButton.Position = UDim2.new(0, 0, 0, 0)
+    discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Discord color
+    discordButton.Text = "Join Discord Server\n\nJoin the Onyx Discord server"
+    discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    discordButton.TextSize = 12
+    discordButton.TextWrapped = true
+    discordButton.Font = Enum.Font.GothamBold
+    discordButton.Parent = frame
+
+    local discordCorner = Instance.new("UICorner")
+    discordCorner.CornerRadius = UDim.new(0, 8)
+    discordCorner.Parent = discordButton
+
+    discordButton.MouseButton1Click:Connect(function()
+        -- Otwórz link do Discord w przeglądarce
+        local httpService = game:GetService("HttpService")
+        local success, result = pcall(function()
+            return httpService:GetAsync("https://discord.gg/MWqRMDZnnF")
+        end)
+        
+        if success then
+            print("Opening Discord link...")
+            -- W Roblox nie można bezpośrednio otwierać linków, więc pokazujemy link w konsoli
+            print("Discord Link: https://discord.gg/MWqRMDZnnF")
+            print("Copy this link and open it in your browser!")
+        else
+            print("Discord Link: https://discord.gg/MWqRMDZnnF")
+            print("Copy this link and open it in your browser to join the Onyx Discord!")
+        end
+    end)
+
+    local Info = Instance.new("TextLabel")
+    Info.Size = UDim2.new(1, 0, 0, 120)
+    Info.Position = UDim2.new(0, 0, 0, 90)
+    Info.BackgroundTransparency = 1
+    Info.Text = "• Join our Discord community!\n• Get support and updates\n• Share your experience\n• Report bugs and issues\n• Connect with other users"
+    Info.TextColor3 = Color3.fromRGB(180, 180, 100)
+    Info.TextSize = 10
+    Info.TextWrapped = true
+    Info.Parent = frame
+end
+
 function CreateToggleButton(text, position, configKey)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 0, 35)
@@ -755,6 +873,8 @@ function CreateToggleButton(text, position, configKey)
             UpdateFOVCircle()
         elseif configKey == "RainbowWeapons" then
             RainbowWeapons()
+        elseif configKey == "HitboxChanger" then
+            ApplyHitboxChanger()
         end
     end)
     
@@ -790,6 +910,7 @@ RunService.Heartbeat:Connect(function()
     RightClickAimbot()
     Triggerbot()
     WeaponHacks()
+    ApplyHitboxChanger() -- Ciągłe aktualizowanie hitboxów
     
     if Config.ESP then
         for _, player in pairs(Players:GetPlayers()) do
@@ -821,7 +942,7 @@ end)
 CreateGUI()
 UpdateFOVCircle()
 
-print("Arsenal Hack Menu v7 Loaded!")
-print("ESP now has Names and Distance options!")
+print("Arsenal Hack Menu v8 Loaded!")
+print("Added Hitbox Changer and Discord link!")
 print("Press K to hide/show the menu")
 print("Use QUIT button to disable all hacks")
