@@ -528,7 +528,7 @@ function CreateGUI()
 
     MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 350, 0, 450)
-    MainFrame.Position = UDim2.new(1, -180, 0, 50)
+    MainFrame.Position = UDim2.new(1, -90, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
