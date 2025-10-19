@@ -1,4 +1,4 @@
--- Arsenal Hack Menu - Fixed Version
+-- Arsenal Hack Menu - ESP with Names and Distance
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -7,6 +7,8 @@ local TweenService = game:GetService("TweenService")
 
 local Config = {
     ESP = false,
+    ShowNames = true,
+    ShowDistance = true,
     AimbotEnabled = false,
     FOV = 50,
     ShowFOV = true,
@@ -24,6 +26,10 @@ local MenuVisible = true
 local GUI = nil
 local MainFrame = nil
 local CurrentTab = "Player"
+
+-- Variables for dragging
+local dragging = false
+local dragInput, dragStart, startPos
 
 -- Śledzenie prawego przycisku myszy
 UserInputService.InputBegan:Connect(function(input)
@@ -53,12 +59,42 @@ function ToggleMenu()
     
     MenuVisible = not MenuVisible
     GUI.Enabled = MenuVisible
-    
-    if MenuVisible then
-        UserInputService.MouseIconEnabled = true
-    else
-        UserInputService.MouseIconEnabled = true
+end
+
+-- Quit function - completely remove everything
+function QuitHacks()
+    -- Remove GUI
+    if GUI then
+        GUI:Destroy()
+        GUI = nil
     end
+    
+    -- Remove FOV Circle
+    if FOVCircle then
+        FOVCircle:Destroy()
+        FOVCircle = nil
+    end
+    
+    -- Remove ESP
+    RemoveESP()
+    
+    -- Stop Rainbow Weapons
+    if RainbowConnection then
+        RainbowConnection:Disconnect()
+        RainbowConnection = nil
+    end
+    
+    -- Reset all config
+    Config.ESP = false
+    Config.ShowNames = true
+    Config.ShowDistance = true
+    Config.AimbotEnabled = false
+    Config.ShowFOV = false
+    Config.InfiniteAmmo = false
+    Config.NoRecoil = false
+    Config.RainbowWeapons = false
+    
+    print("All hacks disabled and menu closed!")
 end
 
 -- FOV Circle na środku celownika
@@ -254,28 +290,141 @@ function Triggerbot()
     end
 end
 
--- Simple ESP
+-- Enhanced ESP with Names and Distance
+function CreateESP(player)
+    if not player.Character then return end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+
+    -- Remove old ESP if exists
+    if ESPHandles[player] then
+        if ESPHandles[player].Highlight then
+            ESPHandles[player].Highlight:Destroy()
+        end
+        if ESPHandles[player].Billboard then
+            ESPHandles[player].Billboard:Destroy()
+        end
+    end
+
+    -- Create Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight"
+    highlight.Adornee = character
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.7
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+
+    -- Create Billboard for Name and Distance
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Billboard"
+    billboard.Size = UDim2.new(0, 200, 0, 60)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.Adornee = humanoidRootPart
+    billboard.AlwaysOnTop = true
+    billboard.Parent = humanoidRootPart
+
+    -- Name Label
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = player.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 14
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Visible = Config.ShowNames
+    nameLabel.Parent = billboard
+
+    -- Distance Label
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    distanceLabel.TextSize = 12
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.Visible = Config.ShowDistance
+    distanceLabel.Parent = billboard
+
+    -- Distance update connection
+    local distanceConnection = RunService.Heartbeat:Connect(function()
+        if character and character.Parent and LocalPlayer.Character then
+            local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if localRoot and humanoidRootPart then
+                local distance = (humanoidRootPart.Position - localRoot.Position).Magnitude
+                local distanceInSteps = math.floor(distance / 3) -- Convert studs to steps (approx)
+                distanceLabel.Text = distanceInSteps .. " steps"
+                
+                -- Update visibility based on distance and settings
+                if distance > 200 then
+                    billboard.Enabled = false
+                    highlight.Enabled = false
+                else
+                    billboard.Enabled = Config.ShowNames or Config.ShowDistance
+                    highlight.Enabled = true
+                    
+                    -- Update label visibility
+                    nameLabel.Visible = Config.ShowNames
+                    distanceLabel.Visible = Config.ShowDistance
+                end
+            end
+        else
+            distanceConnection:Disconnect()
+        end
+    end)
+
+    ESPHandles[player] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        NameLabel = nameLabel,
+        DistanceLabel = distanceLabel,
+        Connection = distanceConnection
+    }
+end
+
+function UpdateAllESP()
+    -- Update existing ESP
+    for player, espData in pairs(ESPHandles) do
+        if espData.NameLabel then
+            espData.NameLabel.Visible = Config.ShowNames
+        end
+        if espData.DistanceLabel then
+            espData.DistanceLabel.Visible = Config.ShowDistance
+        end
+        if espData.Billboard then
+            espData.Billboard.Enabled = Config.ShowNames or Config.ShowDistance
+        end
+    end
+end
+
 function CreateSimpleESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
-            if not ESPHandles[player] then
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "ESP"
-                highlight.Adornee = player.Character
-                highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.FillTransparency = 0.7
-                highlight.Parent = player.Character
-                ESPHandles[player] = highlight
-            end
+            CreateESP(player)
         end
     end
 end
 
 function RemoveESP()
-    for player, highlight in pairs(ESPHandles) do
-        if highlight then
-            highlight:Destroy()
+    for player, espData in pairs(ESPHandles) do
+        if espData.Highlight then
+            espData.Highlight:Destroy()
+        end
+        if espData.Billboard then
+            espData.Billboard:Destroy()
+        end
+        if espData.Connection then
+            espData.Connection:Disconnect()
         end
     end
     ESPHandles = {}
@@ -290,8 +439,8 @@ function CreateGUI()
     GUI.Enabled = true
 
     MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 300, 0, 350)
-    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
+    MainFrame.Size = UDim2.new(0, 320, 0, 420) -- Większe dla nowych opcji ESP
+    MainFrame.Position = UDim2.new(0, 50, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
@@ -301,7 +450,7 @@ function CreateGUI()
     UICorner.CornerRadius = UDim.new(0, 8)
     UICorner.Parent = MainFrame
 
-    -- Title Bar
+    -- Title Bar - draggable area
     local TitleBar = Instance.new("Frame")
     TitleBar.Size = UDim2.new(1, 0, 0, 35)
     TitleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -315,24 +464,24 @@ function CreateGUI()
 
     -- Title Text
     local TitleText = Instance.new("TextLabel")
-    TitleText.Size = UDim2.new(0.6, 0, 1, 0)
+    TitleText.Size = UDim2.new(0.5, 0, 1, 0)
     TitleText.Position = UDim2.new(0, 10, 0, 0)
     TitleText.BackgroundTransparency = 1
-    TitleText.Text = "ARSENAL HACK MENU"
+    TitleText.Text = "Onyx cheat menu"
     TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleText.TextSize = 16
+    TitleText.TextSize = 14
     TitleText.TextXAlignment = Enum.TextXAlignment.Left
     TitleText.Font = Enum.Font.GothamBold
     TitleText.Parent = TitleBar
 
     -- Close Button
     local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 70, 0, 25)
-    CloseButton.Position = UDim2.new(1, -75, 0, 5)
-    CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    CloseButton.Text = "CLOSE (K)"
+    CloseButton.Size = UDim2.new(0, 60, 0, 25)
+    CloseButton.Position = UDim2.new(1, -65, 0, 5)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    CloseButton.Text = "HIDE (K)"
     CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 11
+    CloseButton.TextSize = 10
     CloseButton.Font = Enum.Font.Gotham
     CloseButton.Parent = TitleBar
 
@@ -363,7 +512,7 @@ function CreateGUI()
 
     -- Content Area
     local ContentArea = Instance.new("Frame")
-    ContentArea.Size = UDim2.new(1, -20, 1, -90)
+    ContentArea.Size = UDim2.new(1, -20, 1, -120)
     ContentArea.Position = UDim2.new(0, 10, 0, 85)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Name = "ContentArea"
@@ -374,8 +523,60 @@ function CreateGUI()
     CreateWeaponContent(ContentArea)
     CreateESPContent(ContentArea)
 
+    -- Quit Button at bottom
+    local QuitButton = Instance.new("TextButton")
+    QuitButton.Size = UDim2.new(1, -20, 0, 35)
+    QuitButton.Position = UDim2.new(0, 10, 1, -45)
+    QuitButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    QuitButton.Text = "QUIT - DISABLE ALL HACKS"
+    QuitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    QuitButton.TextSize = 12
+    QuitButton.Font = Enum.Font.GothamBold
+    QuitButton.Parent = MainFrame
+
+    local QuitCorner = Instance.new("UICorner")
+    QuitCorner.CornerRadius = UDim.new(0, 6)
+    QuitCorner.Parent = QuitButton
+
+    QuitButton.MouseButton1Click:Connect(function()
+        QuitHacks()
+    end)
+
     -- Start with Player tab
     SwitchToTab("PLAYER")
+    
+    -- Setup dragging
+    SetupDragging(TitleBar)
+end
+
+-- Dragging functionality
+function SetupDragging(dragFrame)
+    dragFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragFrame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
 end
 
 function CreateTabButton(text, position)
@@ -453,7 +654,7 @@ function CreatePlayerContent(parent)
     end)
 
     local Info = Instance.new("TextLabel")
-    Info.Size = UDim2.new(1, 0, 0, 80)
+    Info.Size = UDim2.new(1, 0, 0, 60)
     Info.Position = UDim2.new(0, 0, 0, 145)
     Info.BackgroundTransparency = 1
     Info.Text = "• Aimbot: Right Mouse Button\n• FOV: Circle shows aim range\n• Green = Locked on target"
@@ -482,7 +683,7 @@ function CreateWeaponContent(parent)
     rainbowButton.Parent = frame
 
     local Info = Instance.new("TextLabel")
-    Info.Size = UDim2.new(1, 0, 0, 100)
+    Info.Size = UDim2.new(1, 0, 0, 80)
     Info.Position = UDim2.new(0, 0, 0, 125)
     Info.BackgroundTransparency = 1
     Info.Text = "• Infinite Ammo: Never run out\n• No Recoil: Perfect accuracy\n• Rainbow: Color changing weapons"
@@ -501,14 +702,23 @@ function CreateESPContent(parent)
     frame.Visible = false
     frame.Parent = parent
 
+    -- ESP Toggle
     local espButton = CreateToggleButton("ENABLE ESP", UDim2.new(0, 0, 0, 0), "ESP")
     espButton.Parent = frame
 
+    -- Show Names Toggle
+    local namesButton = CreateToggleButton("SHOW NAMES", UDim2.new(0, 0, 0, 40), "ShowNames")
+    namesButton.Parent = frame
+
+    -- Show Distance Toggle
+    local distanceButton = CreateToggleButton("SHOW DISTANCE", UDim2.new(0, 0, 0, 80), "ShowDistance")
+    distanceButton.Parent = frame
+
     local Info = Instance.new("TextLabel")
-    Info.Size = UDim2.new(1, 0, 0, 120)
-    Info.Position = UDim2.new(0, 0, 0, 40)
+    Info.Size = UDim2.new(1, 0, 0, 100)
+    Info.Position = UDim2.new(0, 0, 0, 125)
     Info.BackgroundTransparency = 1
-    Info.Text = "• ESP: Highlights enemies in red\n• Works automatically\n• Only shows enemy team\n• Updates in real-time"
+    Info.Text = "• ESP: Highlights enemies in red\n• Names: Shows player names\n• Distance: Shows distance in steps\n• Works up to 200 steps away"
     Info.TextColor3 = Color3.fromRGB(180, 180, 100)
     Info.TextSize = 10
     Info.TextWrapped = true
@@ -539,6 +749,8 @@ function CreateToggleButton(text, position, configKey)
             else
                 RemoveESP()
             end
+        elseif configKey == "ShowNames" or configKey == "ShowDistance" then
+            UpdateAllESP()
         elseif configKey == "AimbotEnabled" or configKey == "ShowFOV" then
             UpdateFOVCircle()
         elseif configKey == "RainbowWeapons" then
@@ -582,8 +794,8 @@ RunService.Heartbeat:Connect(function()
     if Config.ESP then
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character and (not player.Team or player.Team ~= LocalPlayer.Team) then
-                if not ESPHandles[player] or not ESPHandles[player].Parent then
-                    CreateSimpleESP()
+                if not ESPHandles[player] then
+                    CreateESP(player)
                 end
             end
         end
@@ -592,7 +804,15 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
     if ESPHandles[player] then
-        ESPHandles[player]:Destroy()
+        if ESPHandles[player].Highlight then
+            ESPHandles[player].Highlight:Destroy()
+        end
+        if ESPHandles[player].Billboard then
+            ESPHandles[player].Billboard:Destroy()
+        end
+        if ESPHandles[player].Connection then
+            ESPHandles[player].Connection:Disconnect()
+        end
         ESPHandles[player] = nil
     end
 end)
@@ -601,6 +821,7 @@ end)
 CreateGUI()
 UpdateFOVCircle()
 
-print("Arsenal Hack Menu v5 Loaded!")
-print("Menu is now visible!")
+print("Arsenal Hack Menu v7 Loaded!")
+print("ESP now has Names and Distance options!")
 print("Press K to hide/show the menu")
+print("Use QUIT button to disable all hacks")
