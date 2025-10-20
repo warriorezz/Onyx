@@ -6,7 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
-local Config = {-150
+local Config = {
     ESP = false,
     ShowNames = true,
     ShowDistance = true,
@@ -64,7 +64,7 @@ function ToggleMenu()
     GUI.Enabled = MenuVisible
 end
 
--- Quit function - completely remove everything
+-- Quit function - completely remove everything (jakby odinjectowane)
 function QuitHacks()
     -- Remove GUI
     if GUI then
@@ -90,18 +90,7 @@ function QuitHacks()
     -- Restore original hitboxes
     RestoreHitboxes()
     
-    -- Reset all config
-    Config.ESP = false
-    Config.ShowNames = true
-    Config.ShowDistance = true
-    Config.AimbotEnabled = false
-    Config.ShowFOV = false
-    Config.InfiniteAmmo = false
-    Config.NoRecoil = false
-    Config.RainbowWeapons = false
-    Config.HitboxChanger = false
-    
-    print("All hacks disabled and menu closed!")
+    print("All hacks disabled and menu closed - injected state!")
 end
 
 -- Hitbox Changer Functions - POPRAWIONE
@@ -528,7 +517,7 @@ function CreateGUI()
 
     MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 350, 0, 450)
-    MainFrame.Position = UDim2.new(1, -90, 0, 50)
+    MainFrame.Position = UDim2.new(0, 50, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
@@ -613,25 +602,6 @@ function CreateGUI()
     CreateWeaponContent(ContentArea)
     CreateESPContent(ContentArea)
     CreateMiscContent(ContentArea)
-
-    -- Quit Button at bottom
-    local QuitButton = Instance.new("TextButton")
-    QuitButton.Size = UDim2.new(1, -20, 0, 35)
-    QuitButton.Position = UDim2.new(0, 10, 1, -45)
-    QuitButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-    QuitButton.Text = "QUIT - DISABLE ALL HACKS"
-    QuitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    QuitButton.TextSize = 12
-    QuitButton.Font = Enum.Font.GothamBold
-    QuitButton.Parent = MainFrame
-
-    local QuitCorner = Instance.new("UICorner")
-    QuitCorner.CornerRadius = UDim.new(0, 6)
-    QuitCorner.Parent = QuitButton
-
-    QuitButton.MouseButton1Click:Connect(function()
-        QuitHacks()
-    end)
 
     -- Start with Player tab
     SwitchToTab("PLAYER")
@@ -829,7 +799,7 @@ function CreateMiscContent(parent)
     frame.Visible = false
     frame.Parent = parent
 
-    -- Discord Button - POPRAWIONE
+    -- Discord Button
     local discordButton = Instance.new("TextButton")
     discordButton.Size = UDim2.new(1, 0, 0, 80)
     discordButton.Position = UDim2.new(0, 0, 0, 0)
@@ -864,11 +834,30 @@ function CreateMiscContent(parent)
         end
     end)
 
+    -- Quit Button - PRZENIESIONA DO MISC
+    local QuitButton = Instance.new("TextButton")
+    QuitButton.Size = UDim2.new(1, 0, 0, 35)
+    QuitButton.Position = UDim2.new(0, 0, 1, -45)
+    QuitButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    QuitButton.Text = "QUIT - UNINJECT MENU"
+    QuitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    QuitButton.TextSize = 12
+    QuitButton.Font = Enum.Font.GothamBold
+    QuitButton.Parent = frame
+
+    local QuitCorner = Instance.new("UICorner")
+    QuitCorner.CornerRadius = UDim.new(0, 6)
+    QuitCorner.Parent = QuitButton
+
+    QuitButton.MouseButton1Click:Connect(function()
+        QuitHacks()
+    end)
+
     local Info = Instance.new("TextLabel")
-    Info.Size = UDim2.new(1, 0, 0, 120)
+    Info.Size = UDim2.new(1, 0, 0, 80)
     Info.Position = UDim2.new(0, 0, 0, 90)
     Info.BackgroundTransparency = 1
-    Info.Text = "• Click to copy Discord link\n• Paste in browser to join\n• Get support and updates\n• Share your experience\n• Connect with other users"
+    Info.Text = "• Click to copy Discord link\n• Paste in browser to join\n• QUIT: Removes menu completely\n• Like uninjecting from executor"
     Info.TextColor3 = Color3.fromRGB(180, 180, 100)
     Info.TextSize = 10
     Info.TextWrapped = true
@@ -977,4 +966,4 @@ UpdateFOVCircle()
 print("Arsenal Hack Menu v8 Loaded!")
 print("Added Hitbox Changer and Discord link!")
 print("Press K to hide/show the menu")
-print("Use QUIT button to disable all hacks")
+print("Use QUIT button in MISC tab to uninject menu")
